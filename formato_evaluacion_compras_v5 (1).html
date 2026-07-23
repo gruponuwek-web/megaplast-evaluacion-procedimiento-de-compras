@@ -168,7 +168,14 @@ html,body{width:100%;min-height:100%;background:#f0f4f8;font-family:-apple-syste
       <div class="fld"><label>Fecha</label><input type="date" id="e-fecha"></div>
     </div>
     <div class="fg fg-3">
-      <div class="fld"><label>UDN evaluada</label><input type="text" id="e-udn" placeholder="Ej. UDN Norte"></div>
+      <div class="fld"><label>UDN evaluada</label>
+        <select id="e-udn">
+          <option value="">Seleccionar...</option>
+          <option>Mega Plast</option>
+          <option>Temascalapa</option>
+          <option>Repos-T-arte</option>
+        </select>
+      </div>
       <div class="fld"><label>Periodo</label><input type="text" id="e-periodo" placeholder="Ej. Sem 28, jul 2026"></div>
       <div class="fld"><label>Tipo de evaluación</label>
         <select id="e-tipo">
@@ -630,7 +637,8 @@ function nuevaEval(){
   document.querySelectorAll(".paso-score").forEach(d=>{d.textContent="—";d.className="paso-score";});
   document.querySelectorAll(".na-reason").forEach(b=>b.style.display="none");
   document.querySelectorAll(".opc").forEach(o=>o.className="opc");
-  ["e-nombre","e-puesto","e-udn","e-periodo"].forEach(id=>document.getElementById(id).value="");
+  ["e-nombre","e-puesto","e-periodo"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("e-udn").value="";
   document.getElementById("e-tipo").value="";
   document.getElementById("e-fecha").valueAsDate=new Date();
   FASES.forEach(f=>{
