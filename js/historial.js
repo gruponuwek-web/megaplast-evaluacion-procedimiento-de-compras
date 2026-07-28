@@ -63,7 +63,7 @@ function guardarEval() {
     method: "POST",
     mode: "no-cors",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(Object.assign({ tipo: "evaluacion" }, registro))
+    body: JSON.stringify(Object.assign({ evento: "evaluacion" }, registro))
   })
   .then(function () {
     saveMsg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ Guardado localmente. Enviado a Google Sheets.</span>';

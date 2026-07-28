@@ -133,7 +133,7 @@ async function generarPDF() {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tipo: "pdf", base64: base64, filename: filename })
+      body: JSON.stringify({ evento: "pdf", base64: base64, filename: filename })
     })
     .then(function () {
       msg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ PDF descargado y enviado a Drive.</span>';

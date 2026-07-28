@@ -22,19 +22,21 @@ Portal web para que Mega Plast evalúe el cumplimiento de las actividades de cad
 │   ├── layout.css              # Header, stepper, pantallas, tarjetas, rejillas
 │   ├── components.css          # Selección de procedimiento, acordeón, pasos, resumen, historial, botones
 │   └── utilities.css           # Leyenda y mensajes de estado
-└── js/
-    ├── config.js                # Constantes: clave de localStorage y endpoint de Apps Script
-    ├── state.js                 # Estado global mutable (procedimiento activo y calificaciones)
-    ├── data/
-    │   └── procedimientos.js    # Definición de fases y actividades de cada procedimiento
-    ├── navegacion.js            # Cambio de pantallas, stepper y reinicio de evaluación
-    ├── acordeon.js               # Construcción y apertura/cierre del acordeón de actividades
-    ├── scoring.js                # Registro de calificaciones por actividad
-    ├── resumen.js                # Cálculo y render del resumen de resultados
-    ├── historial.js              # Guardado, listado y eliminación de evaluaciones
-    ├── exportCSV.js              # Exportación del historial a CSV
-    ├── pdf.js                    # Generación del reporte PDF y subida a Drive
-    └── main.js                   # Punto de entrada: inicialización de la interfaz
+├── js/
+│   ├── config.js                # Constantes: clave de localStorage y endpoint de Apps Script
+│   ├── state.js                 # Estado global mutable (procedimiento activo y calificaciones)
+│   ├── data/
+│   │   └── procedimientos.js    # Definición de fases y actividades de cada procedimiento
+│   ├── navegacion.js            # Cambio de pantallas, stepper y reinicio de evaluación
+│   ├── acordeon.js              # Construcción y apertura/cierre del acordeón de actividades
+│   ├── scoring.js               # Registro de calificaciones por actividad
+│   ├── resumen.js               # Cálculo y render del resumen de resultados
+│   ├── historial.js             # Guardado, listado y eliminación de evaluaciones
+│   ├── exportCSV.js             # Exportación del historial a CSV
+│   ├── pdf.js                   # Generación del reporte PDF y subida a Drive
+│   └── main.js                  # Punto de entrada: inicialización de la interfaz
+└── apps-script/
+    └── Code.gs                  # Backend en Google Apps Script (recibe el respaldo en Sheets/Drive)
 ```
 
 Los scripts se cargan como **scripts clásicos** (sin módulos ES6), en el orden de dependencias indicado en `index.html`. Cada archivo expone sus funciones en el ámbito global, que es de donde las invocan los atributos `onclick` del markup.
@@ -59,6 +61,16 @@ python -m http.server 8000
 La aplicación requiere conexión a internet para:
 - Cargar `jsPDF` y `jspdf-autotable` desde CDN (necesario solo al exportar PDF).
 - Enviar el respaldo de cada evaluación al Web App de Google Apps Script (`WEBAPP_URL` en [js/config.js](js/config.js)). Sin conexión, el guardado local en `localStorage` sigue funcionando con normalidad.
+
+## Backend (Google Apps Script)
+
+[apps-script/Code.gs](apps-script/Code.gs) contiene el Web App que recibe los envíos del portal y los guarda en:
+
+- Hoja **Evaluaciones** — 1 fila por evaluación guardada.
+- Hoja **Detalle_Actividades** — 1 fila por actividad evaluada, relacionada por `ID_Evaluacion`.
+- Google Drive + hoja **PDFs_Generados** — el PDF exportado y su enlace.
+
+Es un archivo independiente que se pega en el editor de Apps Script (script.google.com), no se ejecuta como parte del sitio estático. Las instrucciones de despliegue están en el encabezado del propio archivo.
 
 ## Notas técnicas y de mantenimiento
 
