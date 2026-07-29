@@ -11,7 +11,7 @@
  *     tuyos (ID de la hoja de cálculo y de la carpeta de Drive
  *     donde se guardarán los PDF).
  *  2. Ejecuta inicializarHojas() una vez desde el editor para
- *     crear las 3 hojas con sus encabezados.
+ *     crear las 4 hojas con sus encabezados.
  *  3. Implementar > Nueva implementación > Aplicación web
  *       - Ejecutar como: Yo
  *       - Quién tiene acceso: Cualquier usuario
@@ -26,6 +26,7 @@ const DRIVE_FOLDER_ID = "1mVfvQu9TygRAvNOQeK6iJE3TFZKsGAn0";
 const SHEET_EVALUACIONES = "Evaluaciones";
 const SHEET_DETALLE = "Detalle_Actividades";
 const SHEET_PDFS = "PDFs_Generados";
+const SHEET_PINES = "Config_Perfiles";
 
 const HEADERS_EVALUACIONES = [
   "Marca_Temporal", "ID_Evaluacion", "Procedimiento", "Procedimiento_Nombre",
@@ -43,6 +44,20 @@ const HEADERS_PDFS = [
   "Marca_Temporal", "Nombre_Archivo", "Enlace_Drive",
 ];
 
+const HEADERS_PINES = [
+  "ID_Perfil", "Nombre", "PIN",
+];
+
+// Valores por defecto: se usan solo para sembrar la hoja Config_Perfiles
+// la primera vez (si ya tiene filas, estos valores se ignoran). Deben
+// coincidir con los IDs de PERFILES en js/perfiles.js del portal.
+const PERFILES_DEFAULT = [
+  { id: "gerencia", nombre: "Gerencia", pin: "1111" },
+  { id: "udn_mega", nombre: "Encargado de UDN · Mega Plast", pin: "2222" },
+  { id: "udn_reposteria", nombre: "Encargado de UDN · Repos-T-arte", pin: "3333" },
+  { id: "udn_temascalapa", nombre: "Encargado de UDN · Temascalapa", pin: "4444" },
+];
+
 /* ============================================================
    PUNTO DE ENTRADA (Web App)
    ============================================================ */
@@ -58,6 +73,8 @@ function doPost(e) {
       guardarEvaluacion(data);
     } else if (data.evento === "pdf") {
       guardarPDF(data);
+    } else if (data.evento === "actualizarPines") {
+      actualizarPines(data);
     } else {
       throw new Error("Campo 'evento' desconocido o ausente: " + data.evento);
     }
@@ -72,7 +89,11 @@ function doPost(e) {
   }
 }
 
-function doGet() {
+function doGet(e) {
+  const accion = e && e.parameter && e.parameter.accion;
+  if (accion === "perfiles") {
+    return respuestaJSON({ ok: true, pines: obtenerPines() });
+  }
   return ContentService.createTextOutput("Portal de Evaluaciones Mega Plast · Web App activo.");
 }
 
@@ -152,6 +173,51 @@ function guardarPDF(data) {
 }
 
 /* ============================================================
+   PIN DE ACCESO POR PERFIL
+   Hoja "Config_Perfiles": permite que Gerencia edite los PIN de
+   los 4 perfiles del portal desde la propia interfaz, y que
+   cualquier dispositivo los consulte al abrir el portal.
+   ============================================================ */
+
+function actualizarPines(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES);
+  asegurarFilasPines(sh);
+  const pines = data.pines || {};
+  const filas = sh.getDataRange().getValues();
+  Object.keys(pines).forEach(function (id) {
+    for (let i = 1; i < filas.length; i++) {
+      if (filas[i][0] === id) {
+        sh.getRange(i + 1, 3).setValue(String(pines[id]));
+        return;
+      }
+    }
+  });
+  Logger.log("actualizarPines: PIN actualizados para " + Object.keys(pines).join(", "));
+}
+
+function obtenerPines() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES);
+  asegurarFilasPines(sh);
+  const filas = sh.getDataRange().getValues();
+  const mapa = {};
+  for (let i = 1; i < filas.length; i++) {
+    mapa[filas[i][0]] = String(filas[i][2]);
+  }
+  return mapa;
+}
+
+// Siembra la hoja con los PIN por defecto solo si está vacía
+// (primera vez que se usa), para no pisar cambios ya guardados.
+function asegurarFilasPines(sh) {
+  if (sh.getLastRow() > 1) return;
+  PERFILES_DEFAULT.forEach(function (p) {
+    sh.appendRow([p.id, p.nombre, p.pin]);
+  });
+}
+
+/* ============================================================
    UTILIDADES
    ============================================================ */
 
@@ -175,4 +241,5 @@ function inicializarHojas() {
   getOrCreateSheet(ss, SHEET_EVALUACIONES, HEADERS_EVALUACIONES);
   getOrCreateSheet(ss, SHEET_DETALLE, HEADERS_DETALLE);
   getOrCreateSheet(ss, SHEET_PDFS, HEADERS_PDFS);
+  asegurarFilasPines(getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES));
 }
