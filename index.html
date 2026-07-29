@@ -19,8 +19,8 @@
       <h1 id="hdr-title">Portal de Evaluaciones</h1>
       <p id="hdr-sub">Mega Plast Materias Primas</p>
     </div>
-    <button class="hdr-back" id="btn-perfil" onclick="confirmarCambioPerfil()">🔒 Cerrar sesión</button>
     <button class="hdr-back" id="btn-back" onclick="volverInicio()">← Inicio</button>
+    <button class="hdr-back" id="btn-perfil" onclick="confirmarCambioPerfil()">🔒 Cerrar sesión</button>
   </header>
 
   <!-- Stepper (oculto en pantalla de inicio e historial) -->
@@ -80,6 +80,12 @@
         <button class="hist-btn" onclick="irHistorial()">
           <span>📊 Ver historial completo</span>
           <span class="hist-count" id="hist-count-badge">0</span>
+        </button>
+      </div>
+      <div class="card" id="card-gestion-pines" style="display:none">
+        <div class="card-title">🔑 Gestión de accesos</div>
+        <button class="hist-btn" onclick="irGestionPines()">
+          <span>🔑 Editar PIN de perfiles</span>
         </button>
       </div>
     </section>
@@ -196,6 +202,21 @@
         <button class="btn btn-gray" onclick="volverInicio()">← Inicio</button>
         <button class="btn btn-blue" onclick="exportCSV()">⬇ Exportar CSV</button>
       </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         SCREEN PINES: GESTIÓN DE ACCESOS
+    ═══════════════════════════════════════ -->
+    <section class="screen" id="sc-pines">
+      <div class="card">
+        <div class="card-title">🔑 Editar PIN de acceso por perfil</div>
+        <div id="pines-form"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gray" onclick="volverInicio()">← Inicio</button>
+        <button class="btn btn-blue" onclick="guardarPinesDesdeForm()">💾 Guardar cambios</button>
+      </div>
+      <div class="save-msg" id="pines-msg"></div>
     </section>
   </main>
 

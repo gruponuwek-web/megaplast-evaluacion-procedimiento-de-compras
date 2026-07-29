@@ -55,9 +55,36 @@ const PERFILES = [
 ];
 
 const PERFIL_KEY = "megaplast_perfil_activo_v1";
+const PINES_CACHE_KEY = "megaplast_pines_cache_v1";
 
 let PERFIL_ACTIVO = null;
 let PERFIL_SEL_ID = null;
+
+/* ── Sincronizar PIN con la nube (Google Sheets vía Apps Script) ──
+   Los PIN por defecto de arriba son el respaldo si nunca hay
+   conexión. Al cargar la página se intenta traer los PIN vigentes;
+   mientras tanto (o si falla) se usa la última copia guardada en
+   este navegador, y si tampoco existe, los valores por defecto. */
+function aplicarPinesMapa(mapa) {
+  PERFILES.forEach(function (p) { if (mapa[p.id]) p.pin = mapa[p.id]; });
+}
+
+const PINES_FETCH_PROMISE = (async function () {
+  try {
+    const cache = JSON.parse(localStorage.getItem(PINES_CACHE_KEY) || "null");
+    if (cache) aplicarPinesMapa(cache);
+  } catch (err) { /* caché corrupta, se ignora */ }
+  try {
+    const res = await fetch(WEBAPP_URL + "?accion=perfiles");
+    const data = await res.json();
+    if (data && data.pines) {
+      aplicarPinesMapa(data.pines);
+      localStorage.setItem(PINES_CACHE_KEY, JSON.stringify(data.pines));
+    }
+  } catch (err) {
+    console.warn("No se pudieron cargar los PIN vigentes desde la nube; se usan los valores locales.", err);
+  }
+})();
 
 function getPerfilPorId(id) {
   return PERFILES.find(function (p) { return p.id === id; }) || null;
@@ -105,9 +132,14 @@ function cancelarSeleccionPerfil() {
   document.getElementById("perfil-pin-wrap").style.display = "none";
 }
 
-function confirmarPerfil() {
+async function confirmarPerfil() {
   const perfil = getPerfilPorId(PERFIL_SEL_ID);
   if (!perfil) return;
+  const btn = document.querySelector("#perfil-pin-wrap .btn-blue");
+  const textoOriginal = btn.textContent;
+  btn.textContent = "⏳ Verificando..."; btn.disabled = true;
+  await PINES_FETCH_PROMISE;
+  btn.textContent = textoOriginal; btn.disabled = false;
   const pin = document.getElementById("perfil-pin").value.trim();
   if (pin !== perfil.pin) {
     document.getElementById("perfil-pin-error").textContent = "PIN incorrecto.";
@@ -132,6 +164,7 @@ function aplicarPerfilActivo(id) {
   if (!PERFIL_ACTIVO) return;
   document.getElementById("hdr-sub").textContent = "Mega Plast Materias Primas · " + PERFIL_ACTIVO.nombre;
   document.getElementById("btn-perfil").classList.add("show");
+  document.getElementById("card-gestion-pines").style.display = PERFIL_ACTIVO.id === "gerencia" ? "" : "none";
   aplicarPerfilAProcedimientos();
 }
 
@@ -172,4 +205,45 @@ function iniciarSesion() {
     renderPerfilGrid();
     showScreen("login");
   }
+}
+
+/* ── Gestión de PIN (solo Gerencia) ── */
+async function irGestionPines() {
+  await PINES_FETCH_PROMISE;
+  renderPinesForm();
+  showScreen("pines");
+}
+
+function renderPinesForm() {
+  const cont = document.getElementById("pines-form");
+  cont.innerHTML = PERFILES.map(function (p) {
+    return '<div class="fld" style="margin-bottom:12px">' +
+      '<label for="pin-edit-' + p.id + '">' + p.nombre + '</label>' +
+      '<input type="text" inputmode="numeric" maxlength="6" id="pin-edit-' + p.id + '" value="' + p.pin + '">' +
+      '</div>';
+  }).join("");
+}
+
+async function guardarPinesDesdeForm() {
+  const msg = document.getElementById("pines-msg");
+  const mapa = {};
+  PERFILES.forEach(function (p) {
+    const val = document.getElementById("pin-edit-" + p.id).value.trim();
+    if (val) mapa[p.id] = val;
+  });
+  aplicarPinesMapa(mapa);
+  localStorage.setItem(PINES_CACHE_KEY, JSON.stringify(mapa));
+  msg.innerHTML = '<span style="color:#1B3F8B">⏳ Guardando en la nube...</span>';
+  try {
+    await fetch(WEBAPP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ evento: "actualizarPines", pines: mapa }),
+    });
+    msg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ PIN actualizados y enviados a la nube.</span>';
+  } catch (err) {
+    msg.innerHTML = '<span style="color:#eab308;font-weight:600">⚠ Guardado en este dispositivo. Sin conexión a la nube: ' + err.message + '</span>';
+  }
+  setTimeout(function () { msg.textContent = ""; }, 6000);
 }
