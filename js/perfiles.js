@@ -153,7 +153,6 @@ async function confirmarPerfil() {
 }
 
 function confirmarCambioPerfil() {
-  if (!confirm("¿Cambiar de perfil? Se cerrará la sesión actual.")) return;
   cerrarPerfil();
   location.reload();
 }
