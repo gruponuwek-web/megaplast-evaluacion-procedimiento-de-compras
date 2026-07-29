@@ -45,12 +45,16 @@ const HEADERS_PDFS = [
 ];
 
 const HEADERS_PINES = [
-  "ID_Perfil", "Nombre", "PIN",
+  "ID_Perfil", "Nombre", "PIN_Hash",
 ];
 
+const LOCKOUT_MAX_INTENTOS = 5;
+const LOCKOUT_SEGUNDOS = 300; // 5 minutos
+
 // Valores por defecto: se usan solo para sembrar la hoja Config_Perfiles
-// la primera vez (si ya tiene filas, estos valores se ignoran). Deben
-// coincidir con los IDs de PERFILES en js/perfiles.js del portal.
+// la primera vez (si ya tiene filas, estos valores se ignoran) — se
+// guarda su HASH, nunca el PIN en claro. Deben coincidir con los IDs
+// de PERFILES en js/perfiles.js del portal.
 const PERFILES_DEFAULT = [
   { id: "gerencia", nombre: "Gerencia", pin: "1111" },
   { id: "udn_mega", nombre: "Encargado de UDN · Mega Plast", pin: "2222" },
@@ -75,6 +79,10 @@ function doPost(e) {
       guardarPDF(data);
     } else if (data.evento === "actualizarPines") {
       actualizarPines(data);
+    } else if (data.evento === "verificarPin") {
+      // Único evento que responde con datos reales (no solo {ok:true});
+      // el PIN nunca sale del servidor, solo el resultado sí/no.
+      return respuestaJSON(verificarPin(data));
     } else {
       throw new Error("Campo 'evento' desconocido o ausente: " + data.evento);
     }
@@ -89,11 +97,9 @@ function doPost(e) {
   }
 }
 
-function doGet(e) {
-  const accion = e && e.parameter && e.parameter.accion;
-  if (accion === "perfiles") {
-    return respuestaJSON({ ok: true, pines: obtenerPines() });
-  }
+function doGet() {
+  // No expone datos: la verificación de PIN se hace por POST
+  // (evento "verificarPin"), y solo devuelve sí/no, nunca el valor.
   return ContentService.createTextOutput("Portal de Evaluaciones Mega Plast · Web App activo.");
 }
 
@@ -174,10 +180,30 @@ function guardarPDF(data) {
 
 /* ============================================================
    PIN DE ACCESO POR PERFIL
-   Hoja "Config_Perfiles": permite que Gerencia edite los PIN de
-   los 4 perfiles del portal desde la propia interfaz, y que
-   cualquier dispositivo los consulte al abrir el portal.
+   Hoja "Config_Perfiles": guarda el HASH (SHA-256) del PIN de
+   cada perfil, nunca el PIN en claro. La verificación ocurre
+   siempre en el servidor — el navegador solo recibe sí/no, y
+   Gerencia puede sobrescribir (no leer) los PIN desde el portal.
+   Además, tras varios intentos fallidos seguidos el perfil queda
+   bloqueado unos minutos (CacheService), para que probar los
+   10,000 PIN de 4 dígitos uno por uno no sea viable.
    ============================================================ */
+
+function verificarPin(data) {
+  const perfilId = data.perfilId;
+  const pin = String(data.pin || "");
+
+  if (perfilBloqueado(perfilId)) {
+    return { ok: false, bloqueado: true };
+  }
+
+  const mapa = obtenerPinesHash();
+  const hashEsperado = mapa[perfilId];
+  const correcto = !!hashEsperado && hashEsperado === hashPin(perfilId, pin);
+  registrarIntento(perfilId, correcto);
+
+  return { ok: correcto };
+}
 
 function actualizarPines(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -186,17 +212,19 @@ function actualizarPines(data) {
   const pines = data.pines || {};
   const filas = sh.getDataRange().getValues();
   Object.keys(pines).forEach(function (id) {
+    const hash = hashPin(id, pines[id]);
     for (let i = 1; i < filas.length; i++) {
       if (filas[i][0] === id) {
-        sh.getRange(i + 1, 3).setValue(String(pines[id]));
+        sh.getRange(i + 1, 3).setValue(hash);
         return;
       }
     }
   });
-  Logger.log("actualizarPines: PIN actualizados para " + Object.keys(pines).join(", "));
+  Logger.log("actualizarPines: PIN actualizados (hash) para " + Object.keys(pines).join(", "));
 }
 
-function obtenerPines() {
+// Uso interno del servidor únicamente — nunca se envía al cliente.
+function obtenerPinesHash() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sh = getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES);
   asegurarFilasPines(sh);
@@ -208,13 +236,43 @@ function obtenerPines() {
   return mapa;
 }
 
-// Siembra la hoja con los PIN por defecto solo si está vacía
-// (primera vez que se usa), para no pisar cambios ya guardados.
+// Siembra la hoja con los PIN por defecto (ya hasheados) solo si
+// está vacía (primera vez que se usa), para no pisar cambios ya
+// guardados.
 function asegurarFilasPines(sh) {
   if (sh.getLastRow() > 1) return;
   PERFILES_DEFAULT.forEach(function (p) {
-    sh.appendRow([p.id, p.nombre, p.pin]);
+    sh.appendRow([p.id, p.nombre, hashPin(p.id, p.pin)]);
   });
+}
+
+// SHA-256 de "idPerfil:pin" — el id como sal evita que dos perfiles
+// con el mismo PIN produzcan el mismo hash guardado en la hoja.
+function hashPin(perfilId, pin) {
+  const crudo = perfilId + ":" + String(pin);
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, crudo, Utilities.Charset.UTF_8);
+  return digest.map(function (b) {
+    const v = (b + 256) % 256;
+    return ("0" + v.toString(16)).slice(-2);
+  }).join("");
+}
+
+/* ── Bloqueo temporal tras intentos fallidos (CacheService, self-expiring) ── */
+function perfilBloqueado(perfilId) {
+  const cache = CacheService.getScriptCache();
+  const intentos = Number(cache.get("intentos_" + perfilId) || 0);
+  return intentos >= LOCKOUT_MAX_INTENTOS;
+}
+
+function registrarIntento(perfilId, correcto) {
+  const cache = CacheService.getScriptCache();
+  const key = "intentos_" + perfilId;
+  if (correcto) {
+    cache.remove(key);
+  } else {
+    const intentos = Number(cache.get(key) || 0) + 1;
+    cache.put(key, String(intentos), LOCKOUT_SEGUNDOS);
+  }
 }
 
 /* ============================================================
@@ -233,7 +291,7 @@ function getOrCreateSheet(ss, nombre, headers) {
 
 /**
  * Ejecutar manualmente una sola vez desde el editor de Apps Script
- * (seleccionar esta función y pulsar "Ejecutar") para crear las 3
+ * (seleccionar esta función y pulsar "Ejecutar") para crear las 4
  * hojas con sus encabezados antes del primer despliegue.
  */
 function inicializarHojas() {

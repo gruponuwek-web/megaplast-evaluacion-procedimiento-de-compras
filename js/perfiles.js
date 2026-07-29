@@ -1,14 +1,10 @@
 /* ============================================================
    PERFILES DE USUARIO
-   Define los perfiles disponibles, el PIN de acceso de cada uno
-   y qué procedimientos y valores precargados les corresponden.
-
-   El PIN es solo una barrera básica en el navegador (evita entrar
-   "por accidente" al perfil de alguien más) — NO es seguridad
-   real: este es un proyecto 100% estático y cualquiera con acceso
-   al código fuente puede leerlo, igual que ocurre con WEBAPP_URL
-   en config.js. Si necesitas seguridad real, esto requeriría un
-   backend con autenticación propia.
+   Define los perfiles disponibles y qué procedimientos y valores
+   precargados les corresponden. El PIN de cada perfil NO vive
+   aquí ni en ningún otro archivo del cliente: se verifica en el
+   servidor (Apps Script), que solo responde sí/no — ver
+   verificarPinRemoto() más abajo y verificarPin() en Code.gs.
    ============================================================ */
 
 const PERFILES = [
@@ -16,7 +12,6 @@ const PERFILES = [
     id: "gerencia",
     nombre: "Gerencia",
     icono: "🧭",
-    pin: "1111",
     procedimientos: ["compras", "venta"],
     puestoOpciones: ["Coordinador General", "Hunter", "Evaluador", "Consultoría"],
     puestoFijo: null,
@@ -26,7 +21,6 @@ const PERFILES = [
     id: "udn_mega",
     nombre: "Encargado de UDN · Mega Plast",
     icono: "🏬",
-    pin: "2222",
     procedimientos: ["venta"],
     puestoOpciones: null,
     puestoFijo: "Encargado de UDN",
@@ -36,7 +30,6 @@ const PERFILES = [
     id: "udn_reposteria",
     nombre: "Encargado de UDN · Repos-T-arte",
     icono: "🥐",
-    pin: "3333",
     procedimientos: ["venta"],
     puestoOpciones: null,
     puestoFijo: "Encargado de UDN",
@@ -46,7 +39,6 @@ const PERFILES = [
     id: "udn_temascalapa",
     nombre: "Encargado de UDN · Temascalapa",
     icono: "🏭",
-    pin: "4444",
     procedimientos: ["venta"],
     puestoOpciones: null,
     puestoFijo: "Encargado de UDN",
@@ -55,36 +47,23 @@ const PERFILES = [
 ];
 
 const PERFIL_KEY = "megaplast_perfil_activo_v1";
-const PINES_CACHE_KEY = "megaplast_pines_cache_v1";
 
 let PERFIL_ACTIVO = null;
 let PERFIL_SEL_ID = null;
 
-/* ── Sincronizar PIN con la nube (Google Sheets vía Apps Script) ──
-   Los PIN por defecto de arriba son el respaldo si nunca hay
-   conexión. Al cargar la página se intenta traer los PIN vigentes;
-   mientras tanto (o si falla) se usa la última copia guardada en
-   este navegador, y si tampoco existe, los valores por defecto. */
-function aplicarPinesMapa(mapa) {
-  PERFILES.forEach(function (p) { if (mapa[p.id]) p.pin = mapa[p.id]; });
+/* ── Verificación de PIN contra el servidor ──
+   Requiere conexión: el PIN nunca se compara en el navegador. Una
+   vez iniciada sesión, el perfil se recuerda en este dispositivo
+   (localStorage) y el resto de la app sigue funcionando sin
+   conexión como siempre — solo el login en sí necesita internet. */
+async function verificarPinRemoto(perfilId, pin) {
+  const res = await fetch(WEBAPP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ evento: "verificarPin", perfilId: perfilId, pin: pin }),
+  });
+  return res.json();
 }
-
-const PINES_FETCH_PROMISE = (async function () {
-  try {
-    const cache = JSON.parse(localStorage.getItem(PINES_CACHE_KEY) || "null");
-    if (cache) aplicarPinesMapa(cache);
-  } catch (err) { /* caché corrupta, se ignora */ }
-  try {
-    const res = await fetch(WEBAPP_URL + "?accion=perfiles");
-    const data = await res.json();
-    if (data && data.pines) {
-      aplicarPinesMapa(data.pines);
-      localStorage.setItem(PINES_CACHE_KEY, JSON.stringify(data.pines));
-    }
-  } catch (err) {
-    console.warn("No se pudieron cargar los PIN vigentes desde la nube; se usan los valores locales.", err);
-  }
-})();
 
 function getPerfilPorId(id) {
   return PERFILES.find(function (p) { return p.id === id; }) || null;
@@ -135,18 +114,34 @@ function cancelarSeleccionPerfil() {
 async function confirmarPerfil() {
   const perfil = getPerfilPorId(PERFIL_SEL_ID);
   if (!perfil) return;
+  const pin = document.getElementById("perfil-pin").value.trim();
+  const errorEl = document.getElementById("perfil-pin-error");
   const btn = document.querySelector("#perfil-pin-wrap .btn-blue");
   const textoOriginal = btn.textContent;
   btn.textContent = "⏳ Verificando..."; btn.disabled = true;
-  await PINES_FETCH_PROMISE;
+
+  let resultado;
+  try {
+    resultado = await verificarPinRemoto(perfil.id, pin);
+  } catch (err) {
+    errorEl.textContent = "Sin conexión: no se pudo verificar el PIN. Intenta de nuevo con internet.";
+    btn.textContent = textoOriginal; btn.disabled = false;
+    return;
+  }
   btn.textContent = textoOriginal; btn.disabled = false;
-  const pin = document.getElementById("perfil-pin").value.trim();
-  if (pin !== perfil.pin) {
-    document.getElementById("perfil-pin-error").textContent = "PIN incorrecto.";
+
+  if (resultado && resultado.bloqueado) {
+    errorEl.textContent = "Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.";
+    document.getElementById("perfil-pin").value = "";
+    return;
+  }
+  if (!resultado || !resultado.ok) {
+    errorEl.textContent = "PIN incorrecto.";
     document.getElementById("perfil-pin").value = "";
     document.getElementById("perfil-pin").focus();
     return;
   }
+
   guardarPerfilActivo(perfil.id);
   aplicarPerfilActivo(perfil.id);
   showScreen("inicio");
@@ -207,9 +202,12 @@ function iniciarSesion() {
   }
 }
 
-/* ── Gestión de PIN (solo Gerencia) ── */
-async function irGestionPines() {
-  await PINES_FETCH_PROMISE;
+/* ── Gestión de PIN (solo Gerencia) ──
+   Los campos siempre empiezan vacíos: el servidor nunca devuelve
+   el PIN vigente, así que no hay nada que precargar. Gerencia solo
+   escribe el PIN nuevo de los perfiles que quiera cambiar y deja
+   el resto en blanco. */
+function irGestionPines() {
   renderPinesForm();
   showScreen("pines");
 }
@@ -219,7 +217,7 @@ function renderPinesForm() {
   cont.innerHTML = PERFILES.map(function (p) {
     return '<div class="fld" style="margin-bottom:12px">' +
       '<label for="pin-edit-' + p.id + '">' + p.nombre + '</label>' +
-      '<input type="text" inputmode="numeric" maxlength="6" id="pin-edit-' + p.id + '" value="' + p.pin + '">' +
+      '<input type="text" inputmode="numeric" maxlength="6" id="pin-edit-' + p.id + '" placeholder="Nuevo PIN (dejar vacío para no cambiar)">' +
       '</div>';
   }).join("");
 }
@@ -231,8 +229,11 @@ async function guardarPinesDesdeForm() {
     const val = document.getElementById("pin-edit-" + p.id).value.trim();
     if (val) mapa[p.id] = val;
   });
-  aplicarPinesMapa(mapa);
-  localStorage.setItem(PINES_CACHE_KEY, JSON.stringify(mapa));
+  if (!Object.keys(mapa).length) {
+    msg.innerHTML = '<span style="color:#eab308;font-weight:600">No escribiste ningún PIN nuevo.</span>';
+    setTimeout(function () { msg.textContent = ""; }, 4000);
+    return;
+  }
   msg.innerHTML = '<span style="color:#1B3F8B">⏳ Guardando en la nube...</span>';
   try {
     await fetch(WEBAPP_URL, {
@@ -242,8 +243,9 @@ async function guardarPinesDesdeForm() {
       body: JSON.stringify({ evento: "actualizarPines", pines: mapa }),
     });
     msg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ PIN actualizados y enviados a la nube.</span>';
+    renderPinesForm();
   } catch (err) {
-    msg.innerHTML = '<span style="color:#eab308;font-weight:600">⚠ Guardado en este dispositivo. Sin conexión a la nube: ' + err.message + '</span>';
+    msg.innerHTML = '<span style="color:#eab308;font-weight:600">⚠ Sin conexión a la nube: ' + err.message + '</span>';
   }
   setTimeout(function () { msg.textContent = ""; }, 6000);
 }
