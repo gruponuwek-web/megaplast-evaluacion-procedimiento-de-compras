@@ -84,6 +84,8 @@ function getHist() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || "
 
 // Historial que le corresponde ver al perfil activo: Gerencia ve todo;
 // un Encargado de UDN solo ve las evaluaciones que él mismo guardó.
+// Esto es solo lo guardado EN ESTE DISPOSITIVO — para lo guardado en
+// otros dispositivos ver obtenerHistorialRemoto().
 function getHistVisible() {
   const hist = getHist();
   if (PERFIL_ACTIVO && PERFIL_ACTIVO.id !== "gerencia") {
@@ -96,18 +98,59 @@ function actualizarBadgeHistorial() {
   document.getElementById("hist-count-badge").textContent = getHistVisible().length;
 }
 
-/* ── Render del historial ── */
-function renderHistorial() {
-  const hist = getHistVisible();
-  const cont = document.getElementById("hist-content");
-  if (!hist.length) { cont.innerHTML = '<div class="hist-empty">📭 Aún no hay evaluaciones guardadas.</div>'; return; }
+// Trae el historial guardado en Google Sheets (incluye lo guardado
+// desde otros dispositivos/perfiles). Si no hay conexión, devuelve
+// una lista vacía en vez de fallar — el historial local sigue
+// funcionando con normalidad sin internet.
+async function obtenerHistorialRemoto() {
+  if (!PERFIL_ACTIVO) return [];
+  try {
+    const res = await fetch(WEBAPP_URL + "?accion=historial&perfilId=" + encodeURIComponent(PERFIL_ACTIVO.id));
+    const data = await res.json();
+    return (data && data.evaluaciones) || [];
+  } catch (err) {
+    console.warn("No se pudo cargar el historial de la nube (sin conexión o error):", err);
+    return [];
+  }
+}
 
-  let h = "";
-  hist.forEach(r => {
+// Combina el historial local con el de la nube, sin duplicar (por id).
+// Si un registro existe en ambos, se prefiere la copia de la nube.
+function mezclarHistorial(local, remoto) {
+  const mapa = new Map();
+  remoto.forEach(function (r) { mapa.set(String(r.id), r); });
+  local.forEach(function (r) { if (!mapa.has(String(r.id))) mapa.set(String(r.id), r); });
+  return Array.from(mapa.values()).sort(function (a, b) { return (Number(b.id) || 0) - (Number(a.id) || 0); });
+}
+
+/* ── Render del historial ── */
+async function renderHistorial() {
+  const local = getHistVisible();
+  const idsLocales = new Set(local.map(function (r) { return String(r.id); }));
+  const cont = document.getElementById("hist-content");
+
+  // Primero lo local (instantáneo, funciona sin conexión)...
+  cont.innerHTML = local.length
+    ? pintarHistorial(local, idsLocales) + '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:8px">⏳ Buscando evaluaciones de otros dispositivos...</div>'
+    : '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:20px">⏳ Buscando evaluaciones guardadas...</div>';
+
+  // ...luego se completa con lo que haya en la nube (otros dispositivos).
+  const remoto = await obtenerHistorialRemoto();
+  const combinado = mezclarHistorial(local, remoto);
+  if (!combinado.length) { cont.innerHTML = '<div class="hist-empty">📭 Aún no hay evaluaciones guardadas.</div>'; return; }
+  cont.innerHTML = pintarHistorial(combinado, idsLocales);
+}
+
+// Solo los registros guardados EN ESTE dispositivo (idsLocales) muestran
+// botón de eliminar — los que solo existen en la nube no se pueden
+// borrar desde aquí todavía.
+function pintarHistorial(hist, idsLocales) {
+  return hist.map(function (r) {
     const mc = r.pct >= 70 ? "#2A8C23" : r.pct >= 45 ? "#eab308" : "#ef4444";
     const fLocal = new Date(r.guardadoEn).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
     const faseRows = Object.entries(r.porFase || {}).map(([n, v]) => `${n}: ${v.obtenido}/${v.maximo} (${v.pct}%)`).join(" · ");
-    h += `<div class="hist-item">
+    const esLocal = idsLocales.has(String(r.id));
+    return `<div class="hist-item">
       <div class="hist-item-hdr">
         <span class="hist-proc-tag">${r.proc === "compras" ? "🛒 Compras" : "🏪 Venta"}</span>
         <span class="hist-date">Guardado: ${fLocal}</span>
@@ -123,11 +166,10 @@ function renderHistorial() {
       </div>
       ${r.obs ? `<div style="margin-top:8px;font-size:11px;color:#475569;background:#f8fafc;border-radius:6px;padding:6px 10px">${r.obs}</div>` : ""}
       <div class="hist-actions">
-        <button class="hist-del" onclick="eliminarEval(${r.id})">🗑 Eliminar</button>
+        ${esLocal ? `<button class="hist-del" onclick="eliminarEval(${r.id})">🗑 Eliminar</button>` : `<span style="font-size:10px;color:#94a3b8">☁ De otro dispositivo</span>`}
       </div>
     </div>`;
-  });
-  cont.innerHTML = h;
+  }).join("");
 }
 
 function eliminarEval(id) {

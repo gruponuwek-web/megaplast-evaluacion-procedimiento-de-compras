@@ -33,6 +33,7 @@ const HEADERS_EVALUACIONES = [
   "Evaluador", "Puesto", "Fecha_Evaluacion", "UDN", "Periodo", "Tipo_Evaluacion",
   "Puntaje_Total", "Puntaje_Maximo", "Porcentaje", "Actividades_Evaluadas",
   "Actividades_No_Aplican", "Observaciones_Generales", "Guardado_En_Cliente",
+  "Perfil_Id", "Perfil_Nombre",
 ];
 
 const HEADERS_DETALLE = [
@@ -97,9 +98,14 @@ function doPost(e) {
   }
 }
 
-function doGet() {
-  // No expone datos: la verificación de PIN se hace por POST
-  // (evento "verificarPin"), y solo devuelve sí/no, nunca el valor.
+function doGet(e) {
+  const accion = e && e.parameter && e.parameter.accion;
+  if (accion === "historial") {
+    const perfilId = (e.parameter.perfilId || "").trim();
+    return respuestaJSON({ ok: true, evaluaciones: obtenerHistorial(perfilId) });
+  }
+  // La verificación de PIN se hace por POST (evento "verificarPin"),
+  // y solo devuelve sí/no, nunca el valor.
   return ContentService.createTextOutput("Portal de Evaluaciones Mega Plast · Web App activo.");
 }
 
@@ -137,6 +143,8 @@ function guardarEvaluacion(data) {
     data.naCount,
     data.obs,
     data.guardadoEn,
+    data.perfilId || "",
+    data.perfilNombre || "",
   ]);
   Logger.log("guardarEvaluacion: fila agregada en " + SHEET_EVALUACIONES);
 
@@ -159,6 +167,82 @@ function guardarEvaluacion(data) {
     shDet.getRange(shDet.getLastRow() + 1, 1, filas.length, HEADERS_DETALLE.length).setValues(filas);
     Logger.log("guardarEvaluacion: " + filas.length + " filas agregadas en " + SHEET_DETALLE);
   }
+}
+
+/* ============================================================
+   OBTENER HISTORIAL (para ver el historial en otro dispositivo)
+   Junta "Evaluaciones" con "Detalle_Actividades" (por
+   ID_Evaluacion) y reconstruye el mismo formato que usa el
+   portal para el historial local. Si perfilId es "gerencia" o
+   viene vacío, devuelve todo; para cualquier otro perfil, solo
+   sus propias evaluaciones (columna Perfil_Id).
+   ============================================================ */
+
+function obtenerHistorial(perfilId) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  const shDet = getOrCreateSheet(ss, SHEET_DETALLE, HEADERS_DETALLE);
+  const filasDet = shDet.getDataRange().getValues();
+  const detallePorId = {};
+  for (let i = 1; i < filasDet.length; i++) {
+    const fila = filasDet[i];
+    const id = fila[0];
+    if (!detallePorId[id]) detallePorId[id] = [];
+    detallePorId[id].push({
+      fase: fila[1], n: fila[2], actividad: fila[3], responsable: fila[4],
+      resultado: fila[5], puntaje: fila[6], comentario: fila[7], razonNA: fila[8],
+    });
+  }
+
+  const shEval = getOrCreateSheet(ss, SHEET_EVALUACIONES, HEADERS_EVALUACIONES);
+  const filasEval = shEval.getDataRange().getValues();
+
+  const evaluaciones = [];
+  for (let i = 1; i < filasEval.length; i++) {
+    const fila = filasEval[i];
+    const filaPerfilId = fila[17] || "";
+    if (perfilId && perfilId !== "gerencia" && filaPerfilId !== perfilId) continue;
+
+    const id = fila[1];
+    const detalle = detallePorId[id] || [];
+    const porFase = {};
+    detalle.forEach(function (d) {
+      if (!porFase[d.fase]) porFase[d.fase] = { obtenido: 0, maximo: 0 };
+      if (d.puntaje !== "N/A" && d.puntaje !== "-" && d.puntaje !== "") {
+        porFase[d.fase].obtenido += Number(d.puntaje);
+        porFase[d.fase].maximo += 2;
+      }
+    });
+    Object.keys(porFase).forEach(function (k) {
+      porFase[k].pct = porFase[k].maximo ? Math.round(porFase[k].obtenido / porFase[k].maximo * 100) : 0;
+    });
+
+    evaluaciones.push({
+      id: id,
+      proc: fila[2],
+      procNombre: fila[3],
+      evaluador: fila[4],
+      puesto: fila[5],
+      fecha: fila[6],
+      udn: fila[7],
+      periodo: fila[8],
+      tipo: fila[9],
+      total: fila[10],
+      max: fila[11],
+      pct: fila[12],
+      answered: fila[13],
+      naCount: fila[14],
+      obs: fila[15],
+      guardadoEn: fila[16],
+      perfilId: filaPerfilId,
+      perfilNombre: fila[18] || "",
+      porFase: porFase,
+      detalle: detalle,
+    });
+  }
+
+  evaluaciones.sort(function (a, b) { return (Number(b.id) || 0) - (Number(a.id) || 0); });
+  return evaluaciones;
 }
 
 /* ============================================================
