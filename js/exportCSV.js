@@ -5,7 +5,7 @@
    ============================================================ */
 
 function exportCSV() {
-  const hist = getHist();
+  const hist = getHistVisible();
   if (!hist.length) { alert("No hay evaluaciones guardadas."); return; }
 
   const cols = ["ID", "Procedimiento", "Evaluador", "Puesto", "Fecha", "UDN", "Periodo", "Tipo", "Puntaje", "Máximo", "Porcentaje", "Evaluadas", "No Aplican", "Fase", "#Actividad", "Actividad", "Responsable", "Resultado", "Puntaje_Actividad", "Comentario", "Razón_NA", "Observaciones_Generales", "Guardado_En"];

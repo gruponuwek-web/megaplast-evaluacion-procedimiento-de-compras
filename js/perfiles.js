@@ -165,6 +165,7 @@ function aplicarPerfilActivo(id) {
   document.getElementById("btn-perfil").classList.add("show");
   document.getElementById("card-gestion-pines").style.display = PERFIL_ACTIVO.id === "gerencia" ? "" : "none";
   aplicarPerfilAProcedimientos();
+  actualizarBadgeHistorial();
 }
 
 function aplicarPerfilAProcedimientos() {

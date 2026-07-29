@@ -47,6 +47,8 @@ function guardarEval() {
     total, max, pct, answered, naCount,
     porFase, detalle,
     guardadoEn: new Date().toISOString(),
+    perfilId: PERFIL_ACTIVO ? PERFIL_ACTIVO.id : null,
+    perfilNombre: PERFIL_ACTIVO ? PERFIL_ACTIVO.nombre : null,
   };
 
   // Guardar en localStorage (respaldo offline)
@@ -80,13 +82,23 @@ function guardarEval() {
 
 function getHist() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch { return []; } }
 
+// Historial que le corresponde ver al perfil activo: Gerencia ve todo;
+// un Encargado de UDN solo ve las evaluaciones que él mismo guardó.
+function getHistVisible() {
+  const hist = getHist();
+  if (PERFIL_ACTIVO && PERFIL_ACTIVO.id !== "gerencia") {
+    return hist.filter(function (r) { return r.perfilId === PERFIL_ACTIVO.id; });
+  }
+  return hist;
+}
+
 function actualizarBadgeHistorial() {
-  document.getElementById("hist-count-badge").textContent = getHist().length;
+  document.getElementById("hist-count-badge").textContent = getHistVisible().length;
 }
 
 /* ── Render del historial ── */
 function renderHistorial() {
-  const hist = getHist();
+  const hist = getHistVisible();
   const cont = document.getElementById("hist-content");
   if (!hist.length) { cont.innerHTML = '<div class="hist-empty">📭 Aún no hay evaluaciones guardadas.</div>'; return; }
 

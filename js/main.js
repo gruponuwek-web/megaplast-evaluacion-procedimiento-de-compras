@@ -7,5 +7,4 @@
    ============================================================ */
 
 document.getElementById("e-fecha").valueAsDate = new Date();
-actualizarBadgeHistorial();
 iniciarSesion();
