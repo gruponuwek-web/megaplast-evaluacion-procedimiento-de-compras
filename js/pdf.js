@@ -4,7 +4,7 @@
    y lo sube como respaldo a Google Drive vía Apps Script.
    ============================================================ */
 
-async function generarPDF() {
+async function generarPDF(descargar = true) {
   const btn = document.querySelector(".btn-green");
   const msg = document.getElementById("pdf-msg");
   btn.textContent = "⏳ Generando PDF..."; btn.disabled = true; msg.textContent = "";
@@ -117,15 +117,20 @@ async function generarPDF() {
     const evalNombre = (document.getElementById("e-nombre").value || "eval").replace(/[^a-zA-Z0-9]/g, "_");
     const filename = "Eval_" + PROC_ID + "_" + udn + "_" + fecha + "_" + evalNombre + ".pdf";
 
-    // Descargar en el dispositivo
-    const blob = doc.output("blob");
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(url); document.body.removeChild(a); }, 2000);
+    // Descargar en el dispositivo (solo si se pide explícitamente)
+    if (descargar) {
+      const blob = doc.output("blob");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(url); document.body.removeChild(a); }, 2000);
+    }
 
-    msg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ PDF descargado. Subiendo a Drive...</span>';
+    const okMsg = descargar ? "✓ PDF descargado. Subiendo a Drive..." : "⏳ Subiendo PDF a Drive...";
+    const doneMsg = descargar ? "✓ PDF descargado y enviado a Drive." : "✓ PDF enviado a Drive.";
+    const failMsg = descargar ? "⚠ PDF descargado. Sin conexión a Drive: " : "⚠ Sin conexión a Drive: ";
+    msg.innerHTML = `<span style="color:#2A8C23;font-weight:600">${okMsg}</span>`;
 
     // Subir a Google Drive via Apps Script
     const base64 = doc.output("datauristring").split(",")[1];
@@ -136,11 +141,11 @@ async function generarPDF() {
       body: JSON.stringify({ evento: "pdf", base64: base64, filename: filename })
     })
     .then(function () {
-      msg.innerHTML = '<span style="color:#2A8C23;font-weight:600">✓ PDF descargado y enviado a Drive.</span>';
+      msg.innerHTML = `<span style="color:#2A8C23;font-weight:600">${doneMsg}</span>`;
       setTimeout(function () { msg.textContent = ""; }, 6000);
     })
     .catch(function (err) {
-      msg.innerHTML = '<span style="color:#eab308;font-weight:600">⚠ PDF descargado. Sin conexión a Drive: ' + err.message + '</span>';
+      msg.innerHTML = `<span style="color:#eab308;font-weight:600">${failMsg}${err.message}</span>`;
       setTimeout(function () { msg.textContent = ""; }, 8000);
     });
   } catch (err) {

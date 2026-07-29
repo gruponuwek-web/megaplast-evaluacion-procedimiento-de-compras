@@ -55,8 +55,8 @@ function guardarEval() {
   localStorage.setItem(HIST_KEY, JSON.stringify(hist));
   actualizarBadgeHistorial();
 
-  // Generar el mismo PDF que "Exportar PDF" y subirlo a Drive
-  generarPDF();
+  // Generar el mismo PDF que "Exportar PDF" y subirlo a Drive, sin descargarlo localmente
+  generarPDF(false);
 
   // Enviar a Google Sheets
   const saveMsg = document.getElementById("save-msg");
