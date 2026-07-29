@@ -7,4 +7,4 @@
 const HIST_KEY = "megaplast_eval_hist_v1";
 
 // Endpoint del Web App de Google Apps Script (respaldo en Sheets / Drive).
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwPqDbo61C2wJkX14ts55sk4ic6mqXSw48FV5nLLQ4_9u_eV-CPWo9mRbHNTwfbTlQ-/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyscsM59-8clpN4wGQ1S8l1ZXu9AmU3_t9vCexUTwe8OJ22WjxEBlNaSmI7PBRTFdRQ/exec";
