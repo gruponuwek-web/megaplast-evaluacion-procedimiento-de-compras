@@ -94,8 +94,16 @@ function getHistVisible() {
   return hist;
 }
 
-function actualizarBadgeHistorial() {
-  document.getElementById("hist-count-badge").textContent = getHistVisible().length;
+// Muestra primero el conteo local (instantáneo) y lo corrige poco
+// después con el total real (local + nube), cuando llega la respuesta.
+async function actualizarBadgeHistorial() {
+  const local = getHistVisible();
+  const badge = document.getElementById("hist-count-badge");
+  badge.textContent = local.length;
+  if (!PERFIL_ACTIVO) return;
+  const remoto = await obtenerHistorialRemoto();
+  if (!remoto.length) return;
+  badge.textContent = mezclarHistorial(local, remoto).length;
 }
 
 // Trae el historial guardado en Google Sheets (incluye lo guardado
