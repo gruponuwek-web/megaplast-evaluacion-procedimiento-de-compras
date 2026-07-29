@@ -21,6 +21,7 @@
     </div>
     <button class="hdr-back" id="btn-back" onclick="volverInicio()">← Inicio</button>
     <button class="hdr-back" id="btn-perfil" onclick="confirmarCambioPerfil()">🔒 Cerrar sesión</button>
+    <button class="hdr-back hdr-icon" id="btn-gestion-pines" onclick="irGestionPines()" title="Editar PIN de perfiles">⚙️</button>
   </header>
 
   <!-- Stepper (oculto en pantalla de inicio e historial) -->
@@ -80,12 +81,6 @@
         <button class="hist-btn" onclick="irHistorial()">
           <span>📊 Ver historial completo</span>
           <span class="hist-count" id="hist-count-badge">0</span>
-        </button>
-      </div>
-      <div class="card" id="card-gestion-pines" style="display:none">
-        <div class="card-title">🔑 Gestión de accesos</div>
-        <button class="hist-btn" onclick="irGestionPines()">
-          <span>🔑 Editar PIN de perfiles</span>
         </button>
       </div>
     </section>

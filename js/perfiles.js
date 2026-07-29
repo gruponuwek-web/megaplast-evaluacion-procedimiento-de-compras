@@ -158,7 +158,8 @@ function aplicarPerfilActivo(id) {
   if (!PERFIL_ACTIVO) return;
   document.getElementById("hdr-sub").textContent = "Mega Plast Materias Primas · " + PERFIL_ACTIVO.nombre;
   document.getElementById("btn-perfil").classList.add("show");
-  document.getElementById("card-gestion-pines").style.display = PERFIL_ACTIVO.id === "gerencia" ? "" : "none";
+  if (PERFIL_ACTIVO.id === "gerencia") document.getElementById("btn-gestion-pines").classList.add("show");
+  else document.getElementById("btn-gestion-pines").classList.remove("show");
   aplicarPerfilAProcedimientos();
   actualizarBadgeHistorial();
 }

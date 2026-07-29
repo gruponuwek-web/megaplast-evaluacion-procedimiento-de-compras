@@ -48,6 +48,10 @@
 #btn-perfil {
   margin-left: auto;
 }
+.hdr-icon {
+  padding: 6px 9px;
+  font-size: 14px;
+}
 .hdr-back:active {
   opacity: .7;
 }
