@@ -210,7 +210,12 @@ function iniciarSesion() {
    el resto en blanco. */
 function irGestionPines() {
   renderPinesForm();
-  showScreen("pines");
+  document.getElementById("pines-msg").textContent = "";
+  document.getElementById("modal-pines").style.display = "flex";
+}
+
+function cerrarModalPines() {
+  document.getElementById("modal-pines").style.display = "none";
 }
 
 function renderPinesForm() {

@@ -231,21 +231,25 @@
       </div>
     </section>
 
-    <!-- ══════════════════════════════════════
-         SCREEN PINES: GESTIÓN DE ACCESOS
-    ═══════════════════════════════════════ -->
-    <section class="screen" id="sc-pines">
-      <div class="card">
-        <div class="card-title">🔑 Editar PIN de acceso por perfil</div>
-        <div id="pines-form"></div>
+  </main>
+
+  <!-- ══════════════════════════════════════
+       MODAL: EDITAR PIN DE PERFILES (Gerencia)
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-pines" style="display:none" onclick="if(event.target===this) cerrarModalPines()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-title">🔑 Editar PIN de acceso por perfil</span>
+        <button class="modal-close" onclick="cerrarModalPines()">✕</button>
       </div>
-      <div class="btn-row">
-        <button class="btn btn-gray" onclick="volverInicio()">← Inicio</button>
+      <div id="pines-form"></div>
+      <div class="btn-row" style="margin-top:14px">
+        <button class="btn btn-gray" onclick="cerrarModalPines()">Cancelar</button>
         <button class="btn btn-blue" onclick="guardarPinesDesdeForm()">💾 Guardar cambios</button>
       </div>
       <div class="save-msg" id="pines-msg"></div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
