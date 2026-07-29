@@ -21,7 +21,7 @@
  */
 
 const SPREADSHEET_ID = "1rAi8bNWjBgcdX5uz7zIO0K9zY0j2izZDgiJsbzOB8cU";
-const DRIVE_FOLDER_ID = "REEMPLAZAR_CON_TU_ID_DE_CARPETA_DRIVE";
+const DRIVE_FOLDER_ID = "1mVfvQu9TygRAvNOQeK6iJE3TFZKsGAn0";
 
 const SHEET_EVALUACIONES = "Evaluaciones";
 const SHEET_DETALLE = "Detalle_Actividades";
