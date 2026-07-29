@@ -96,19 +96,21 @@ function renderPerfilGrid() {
 
 function seleccionarPerfil(id) {
   PERFIL_SEL_ID = id;
+  const perfil = getPerfilPorId(id);
   document.querySelectorAll(".perfil-card").forEach(function (c) { c.classList.remove("sel"); });
   document.getElementById("perfil-card-" + id).classList.add("sel");
   document.getElementById("perfil-pin-error").textContent = "";
+  document.getElementById("modal-perfil-pin-titulo").textContent = "🔐 PIN de acceso — " + (perfil ? perfil.nombre : "");
   const pin = document.getElementById("perfil-pin");
   pin.value = "";
-  document.getElementById("perfil-pin-wrap").style.display = "block";
+  document.getElementById("modal-perfil-pin").style.display = "flex";
   pin.focus();
 }
 
 function cancelarSeleccionPerfil() {
   PERFIL_SEL_ID = null;
   document.querySelectorAll(".perfil-card").forEach(function (c) { c.classList.remove("sel"); });
-  document.getElementById("perfil-pin-wrap").style.display = "none";
+  document.getElementById("modal-perfil-pin").style.display = "none";
 }
 
 async function confirmarPerfil() {
@@ -116,7 +118,7 @@ async function confirmarPerfil() {
   if (!perfil) return;
   const pin = document.getElementById("perfil-pin").value.trim();
   const errorEl = document.getElementById("perfil-pin-error");
-  const btn = document.querySelector("#perfil-pin-wrap .btn-blue");
+  const btn = document.querySelector("#modal-perfil-pin .btn-blue");
   const textoOriginal = btn.textContent;
   btn.textContent = "⏳ Verificando..."; btn.disabled = true;
 
@@ -142,6 +144,7 @@ async function confirmarPerfil() {
     return;
   }
 
+  document.getElementById("modal-perfil-pin").style.display = "none";
   guardarPerfilActivo(perfil.id);
   aplicarPerfilActivo(perfil.id);
   showScreen("inicio");

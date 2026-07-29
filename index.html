@@ -41,17 +41,6 @@
       <div class="card">
         <div class="card-title">🔐 Selecciona tu perfil</div>
         <div class="proc-grid" id="perfil-grid"></div>
-        <div id="perfil-pin-wrap" style="display:none;margin-top:16px">
-          <div class="fld">
-            <label for="perfil-pin">PIN de acceso</label>
-            <input type="password" id="perfil-pin" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') confirmarPerfil()">
-          </div>
-          <div id="perfil-pin-error" class="perfil-pin-error"></div>
-          <div class="btn-row" style="margin-top:10px">
-            <button class="btn btn-gray" onclick="cancelarSeleccionPerfil()">← Cambiar</button>
-            <button class="btn btn-blue" onclick="confirmarPerfil()">Entrar →</button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -232,6 +221,27 @@
     </section>
 
   </main>
+
+  <!-- ══════════════════════════════════════
+       MODAL: PIN DE ACCESO (login)
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-perfil-pin" style="display:none" onclick="if(event.target===this) cancelarSeleccionPerfil()">
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <span class="modal-title" id="modal-perfil-pin-titulo">🔐 PIN de acceso</span>
+        <button class="modal-close" onclick="cancelarSeleccionPerfil()">✕</button>
+      </div>
+      <div class="fld">
+        <label for="perfil-pin">PIN de acceso</label>
+        <input type="password" id="perfil-pin" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') confirmarPerfil()">
+      </div>
+      <div id="perfil-pin-error" class="perfil-pin-error"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn btn-gray" onclick="cancelarSeleccionPerfil()">← Cambiar</button>
+        <button class="btn btn-blue" onclick="confirmarPerfil()">Entrar →</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════════════════════════════════════
        MODAL: EDITAR PIN DE PERFILES (Gerencia)
