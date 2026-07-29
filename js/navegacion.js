@@ -24,6 +24,7 @@ function showStepper(v) {
 }
 
 function selProc(id) {
+  if (PERFIL_ACTIVO && !PERFIL_ACTIVO.procedimientos.includes(id)) return;
   PROC_ID = id;
   PROC = PROCS[id];
   SC = {};
@@ -36,6 +37,7 @@ function selProc(id) {
   if (PROC.nota) { notaEl.textContent = PROC.nota; notaEl.style.display = "block"; }
   else { notaEl.style.display = "none"; }
   buildAcordeon();
+  aplicarPerfilACampos();
   showStepper(true);
   setStep(1);
   showScreen("datos");
@@ -78,9 +80,10 @@ function nuevaEval() {
   document.querySelectorAll(".paso-sc").forEach(d => { d.textContent = "—"; d.className = "paso-sc"; });
   document.querySelectorAll(".na-reason").forEach(b => b.style.display = "none");
   document.querySelectorAll(".opc").forEach(o => o.className = "opc");
-  ["e-nombre", "e-puesto", "e-periodo"].forEach(id => document.getElementById(id).value = "");
+  ["e-nombre", "e-periodo"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("e-udn").value = "";
   document.getElementById("e-tipo").value = "";
+  aplicarPerfilACampos();
   document.getElementById("e-fecha").valueAsDate = new Date();
   PROC.fases.forEach(f => {
     const b = document.getElementById(`badge-${f.id}`);

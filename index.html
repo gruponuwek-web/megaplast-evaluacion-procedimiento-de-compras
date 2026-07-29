@@ -17,8 +17,9 @@
     <img src="assets/logo-megaplast.png" alt="Mega Plast">
     <div class="hdr-txt">
       <h1 id="hdr-title">Portal de Evaluaciones</h1>
-      <p>Mega Plast Materias Primas</p>
+      <p id="hdr-sub">Mega Plast Materias Primas</p>
     </div>
+    <button class="hdr-back" id="btn-perfil" onclick="confirmarCambioPerfil()">🔒 Cerrar sesión</button>
     <button class="hdr-back" id="btn-back" onclick="volverInicio()">← Inicio</button>
   </header>
 
@@ -33,19 +34,40 @@
 
   <main>
     <!-- ══════════════════════════════════════
+         SCREEN LOGIN: SELECCIÓN DE PERFIL
+    ═══════════════════════════════════════ -->
+    <section class="screen active" id="sc-login">
+      <div class="card">
+        <div class="card-title">🔐 Selecciona tu perfil</div>
+        <div class="proc-grid" id="perfil-grid"></div>
+        <div id="perfil-pin-wrap" style="display:none;margin-top:16px">
+          <div class="fld">
+            <label for="perfil-pin">PIN de acceso</label>
+            <input type="password" id="perfil-pin" inputmode="numeric" maxlength="6" placeholder="••••" onkeydown="if(event.key==='Enter') confirmarPerfil()">
+          </div>
+          <div id="perfil-pin-error" class="perfil-pin-error"></div>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn btn-gray" onclick="cancelarSeleccionPerfil()">← Cambiar</button>
+            <button class="btn btn-blue" onclick="confirmarPerfil()">Entrar →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
          SCREEN 0: INICIO — SELECCIÓN
     ═══════════════════════════════════════ -->
-    <section class="screen active" id="sc-inicio">
+    <section class="screen" id="sc-inicio">
       <div class="card">
         <div class="card-title">📋 Selecciona el procedimiento a evaluar</div>
         <div class="proc-grid">
-          <div class="proc-card" onclick="selProc('compras')">
+          <div class="proc-card" id="proc-compras" onclick="selProc('compras')">
             <div class="proc-icon">🛒</div>
             <div class="proc-name">Procedimiento de Compras</div>
             <div class="proc-desc">Identificación de faltantes, gestión de OC, compra a proveedores y recepción de mercancía</div>
             <span class="proc-steps">19 actividades · 4 etapas</span>
           </div>
-          <div class="proc-card" onclick="selProc('venta')">
+          <div class="proc-card" id="proc-venta" onclick="selProc('venta')">
             <div class="proc-icon">🏪</div>
             <div class="proc-name">Procedimiento de Venta en Piso</div>
             <div class="proc-desc">Recepción de cliente, cotización y picking, cobro y entrega del pedido</div>
@@ -70,7 +92,7 @@
         <div class="card-title" id="datos-title">📋 Datos de la evaluación</div>
         <div class="fg fg3">
           <div class="fld"><label for="e-nombre">Evaluador</label><input type="text" id="e-nombre" placeholder="Nombre completo"></div>
-          <div class="fld"><label for="e-puesto">Puesto / Rol</label><input type="text" id="e-puesto" placeholder="Ej. Coordinador"></div>
+          <div class="fld" id="fld-puesto"><label for="e-puesto">Puesto / Rol</label><input type="text" id="e-puesto" placeholder="Ej. Coordinador"></div>
           <div class="fld"><label for="e-fecha">Fecha</label><input type="date" id="e-fecha"></div>
         </div>
         <div class="fg fg3">
@@ -185,6 +207,7 @@
   <script src="js/config.js"></script>
   <script src="js/state.js"></script>
   <script src="js/data/procedimientos.js"></script>
+  <script src="js/perfiles.js"></script>
 
   <!-- Lógica de la aplicación -->
   <script src="js/navegacion.js"></script>

@@ -45,6 +45,9 @@
 .hdr-back.show {
   display: flex;
 }
+#btn-perfil {
+  margin-left: auto;
+}
 .hdr-back:active {
   opacity: .7;
 }

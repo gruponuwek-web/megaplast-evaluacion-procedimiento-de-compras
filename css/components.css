@@ -59,6 +59,20 @@
   border: 1px solid #bfdbfe;
 }
 
+/* ── Selección de perfil ── */
+.perfil-card.sel {
+  border-color: #1B3F8B;
+  background: #eff6ff;
+  box-shadow: 0 4px 16px rgba(27, 63, 139, .12);
+}
+.perfil-pin-error {
+  font-size: 11px;
+  color: #ef4444;
+  font-weight: 600;
+  min-height: 14px;
+  margin-top: 4px;
+}
+
 /* ── Botón de historial ── */
 .hist-btn {
   display: flex;
