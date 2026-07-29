@@ -301,3 +301,35 @@ function inicializarHojas() {
   getOrCreateSheet(ss, SHEET_PDFS, HEADERS_PDFS);
   asegurarFilasPines(getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES));
 }
+
+/**
+ * RECUPERACIÓN DE PIN OLVIDADO (incluye Gerencia)
+ * Como cambiar un PIN normalmente requiere haber iniciado sesión como
+ * Gerencia, si se te olvida el PIN de Gerencia quedas sin forma de
+ * entrar desde el portal. Este es el "botón de emergencia": se corre
+ * directo desde aquí (Apps Script), sin pasar por el login del portal.
+ *
+ * Uso: cambia PERFIL_A_RESETEAR y NUEVO_PIN abajo, selecciona esta
+ * función en el desplegable de "Ejecutar" (arriba del editor) y
+ * pulsa Ejecutar. Revisa el registro (Ver > Registros) para
+ * confirmar el mensaje de éxito.
+ *
+ * IDs válidos: gerencia, udn_mega, udn_reposteria, udn_temascalapa
+ */
+function resetearPinPerfil() {
+  const PERFIL_A_RESETEAR = "gerencia";
+  const NUEVO_PIN = "1111";
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, SHEET_PINES, HEADERS_PINES);
+  asegurarFilasPines(sh);
+  const filas = sh.getDataRange().getValues();
+  for (let i = 1; i < filas.length; i++) {
+    if (filas[i][0] === PERFIL_A_RESETEAR) {
+      sh.getRange(i + 1, 3).setValue(hashPin(PERFIL_A_RESETEAR, NUEVO_PIN));
+      Logger.log("✓ PIN de '" + PERFIL_A_RESETEAR + "' reseteado a '" + NUEVO_PIN + "'.");
+      return;
+    }
+  }
+  Logger.log("✗ No se encontró el perfil '" + PERFIL_A_RESETEAR + "'. Revisa el ID.");
+}
