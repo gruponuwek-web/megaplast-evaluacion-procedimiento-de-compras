@@ -223,7 +223,7 @@ function obtenerHistorial(perfilId) {
       procNombre: fila[3],
       evaluador: fila[4],
       puesto: fila[5],
-      fecha: fila[6],
+      fecha: formatearFecha(fila[6]),
       udn: fila[7],
       periodo: fila[8],
       tipo: fila[9],
@@ -243,6 +243,17 @@ function obtenerHistorial(perfilId) {
 
   evaluaciones.sort(function (a, b) { return (Number(b.id) || 0) - (Number(a.id) || 0); });
   return evaluaciones;
+}
+
+// Sheets convierte "2026-07-29" a un Date real al guardarlo; hay que
+// devolverlo como "yyyy-MM-dd" de nuevo (mismo formato que manda el
+// portal) para que los filtros de fecha por rango puedan comparar
+// como texto sin importar si el registro es local o de la nube.
+function formatearFecha(valor) {
+  if (valor instanceof Date) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(valor || "");
 }
 
 /* ============================================================

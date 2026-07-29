@@ -194,8 +194,40 @@
          SCREEN H: HISTORIAL
     ═══════════════════════════════════════ -->
     <section class="screen" id="sc-hist">
+      <div class="card hist-filtros">
+        <div class="card-title">🔍 Filtrar</div>
+        <div class="fg fg4">
+          <div class="fld" id="fld-hist-proc" style="display:none">
+            <label for="hist-filtro-proc">Procedimiento</label>
+            <select id="hist-filtro-proc" onchange="aplicarFiltrosHistorial()">
+              <option value="">Todos</option>
+              <option value="compras">Compras</option>
+              <option value="venta">Venta en Piso</option>
+            </select>
+          </div>
+          <div class="fld" id="fld-hist-udn" style="display:none">
+            <label for="hist-filtro-udn">UDN / Sucursal</label>
+            <select id="hist-filtro-udn" onchange="aplicarFiltrosHistorial()">
+              <option value="">Todas</option>
+              <option value="Mega Plast">Mega Plast</option>
+              <option value="Temascalapa">Temascalapa</option>
+              <option value="Repos-T-arte">Repos-T-arte</option>
+            </select>
+          </div>
+          <div class="fld">
+            <label for="hist-filtro-fecha-desde">Desde</label>
+            <input type="date" id="hist-filtro-fecha-desde" onchange="aplicarFiltrosHistorial()">
+          </div>
+          <div class="fld">
+            <label for="hist-filtro-fecha-hasta">Hasta</label>
+            <input type="date" id="hist-filtro-fecha-hasta" onchange="aplicarFiltrosHistorial()">
+          </div>
+        </div>
+        <button class="hist-filtros-clear" onclick="limpiarFiltrosHistorial()">✕ Limpiar filtros</button>
+      </div>
       <div class="card">
         <div class="card-title">🗂 Historial de evaluaciones</div>
+        <div id="hist-count-txt" class="hist-count-txt"></div>
         <div id="hist-content"></div>
       </div>
       <div class="btn-row">

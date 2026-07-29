@@ -132,34 +132,95 @@ function mezclarHistorial(local, remoto) {
 }
 
 /* ── Render del historial ── */
-async function renderHistorial() {
-  const local = getHistVisible();
-  const idsLocales = new Set(local.map(function (r) { return String(r.id); }));
+let HIST_COMBINADO = [];
+let HIST_IDS_LOCALES = new Set();
+
+// Gerencia filtra por Procedimiento + UDN + Fecha; un Encargado de
+// UDN ya tiene su procedimiento y su UDN fijos, así que solo ve el
+// filtro de Fecha.
+function mostrarFiltrosHistorial() {
+  const esGerencia = !!PERFIL_ACTIVO && PERFIL_ACTIVO.id === "gerencia";
+  document.getElementById("fld-hist-proc").style.display = esGerencia ? "" : "none";
+  document.getElementById("fld-hist-udn").style.display = esGerencia ? "" : "none";
+}
+
+function limpiarFiltrosHistorial() {
+  document.getElementById("hist-filtro-proc").value = "";
+  document.getElementById("hist-filtro-udn").value = "";
+  document.getElementById("hist-filtro-fecha-desde").value = "";
+  document.getElementById("hist-filtro-fecha-hasta").value = "";
+  aplicarFiltrosHistorial();
+}
+
+function aplicarFiltrosHistorial() {
+  const proc = (document.getElementById("hist-filtro-proc") || {}).value || "";
+  const udn = (document.getElementById("hist-filtro-udn") || {}).value || "";
+  const desde = (document.getElementById("hist-filtro-fecha-desde") || {}).value || "";
+  const hasta = (document.getElementById("hist-filtro-fecha-hasta") || {}).value || "";
+
+  const filtrado = HIST_COMBINADO.filter(function (r) {
+    if (proc && r.proc !== proc) return false;
+    if (udn && r.udn !== udn) return false;
+    if (desde && (!r.fecha || r.fecha < desde)) return false;
+    if (hasta && (!r.fecha || r.fecha > hasta)) return false;
+    return true;
+  });
+
+  const totalTxt = document.getElementById("hist-count-txt");
+  totalTxt.textContent = (proc || udn || desde || hasta)
+    ? "Mostrando " + filtrado.length + " de " + HIST_COMBINADO.length + " evaluaciones"
+    : filtrado.length + (filtrado.length === 1 ? " evaluación" : " evaluaciones");
+
   const cont = document.getElementById("hist-content");
+  cont.innerHTML = filtrado.length
+    ? pintarHistorial(filtrado, HIST_IDS_LOCALES)
+    : '<div class="hist-empty">📭 No hay evaluaciones con esos filtros.</div>';
+}
+
+async function renderHistorial() {
+  mostrarFiltrosHistorial();
+  document.getElementById("hist-filtro-proc").value = "";
+  document.getElementById("hist-filtro-udn").value = "";
+  document.getElementById("hist-filtro-fecha-desde").value = "";
+  document.getElementById("hist-filtro-fecha-hasta").value = "";
+
+  const local = getHistVisible();
+  HIST_IDS_LOCALES = new Set(local.map(function (r) { return String(r.id); }));
+  HIST_COMBINADO = local;
+
+  const cont = document.getElementById("hist-content");
+  const totalTxt = document.getElementById("hist-count-txt");
 
   // Primero lo local (instantáneo, funciona sin conexión)...
-  cont.innerHTML = local.length
-    ? pintarHistorial(local, idsLocales) + '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:8px">⏳ Buscando evaluaciones de otros dispositivos...</div>'
-    : '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:20px">⏳ Buscando evaluaciones guardadas...</div>';
+  if (local.length) {
+    totalTxt.textContent = local.length + (local.length === 1 ? " evaluación" : " evaluaciones");
+    aplicarFiltrosHistorial();
+    cont.insertAdjacentHTML("beforeend", '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:8px">⏳ Buscando evaluaciones de otros dispositivos...</div>');
+  } else {
+    totalTxt.textContent = "";
+    cont.innerHTML = '<div id="hist-sync-msg" style="text-align:center;font-size:11px;color:#94a3b8;padding:20px">⏳ Buscando evaluaciones guardadas...</div>';
+  }
 
   // ...luego se completa con lo que haya en la nube (otros dispositivos).
   const remoto = await obtenerHistorialRemoto();
-  const combinado = mezclarHistorial(local, remoto);
-  if (!combinado.length) { cont.innerHTML = '<div class="hist-empty">📭 Aún no hay evaluaciones guardadas.</div>'; return; }
-  cont.innerHTML = pintarHistorial(combinado, idsLocales);
+  HIST_COMBINADO = mezclarHistorial(local, remoto);
+  if (!HIST_COMBINADO.length) { cont.innerHTML = '<div class="hist-empty">📭 Aún no hay evaluaciones guardadas.</div>'; return; }
+  aplicarFiltrosHistorial();
 }
 
 // Solo los registros guardados EN ESTE dispositivo (idsLocales) muestran
 // botón de eliminar — los que solo existen en la nube no se pueden
-// borrar desde aquí todavía.
+// borrar desde aquí todavía. Se numeran en el orden mostrado (más
+// reciente = #1) para poder contar cuántos hay de un vistazo.
 function pintarHistorial(hist, idsLocales) {
-  return hist.map(function (r) {
+  return hist.map(function (r, i) {
     const mc = r.pct >= 70 ? "#2A8C23" : r.pct >= 45 ? "#eab308" : "#ef4444";
     const fLocal = new Date(r.guardadoEn).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
     const faseRows = Object.entries(r.porFase || {}).map(([n, v]) => `${n}: ${v.obtenido}/${v.maximo} (${v.pct}%)`).join(" · ");
     const esLocal = idsLocales.has(String(r.id));
     return `<div class="hist-item">
       <div class="hist-item-hdr">
+        <span class="hist-num">#${i + 1}</span>
         <span class="hist-proc-tag">${r.proc === "compras" ? "🛒 Compras" : "🏪 Venta"}</span>
         <span class="hist-date">Guardado: ${fLocal}</span>
       </div>
